@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine.UI;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using System.Threading.Tasks;
 
 public class DiscUI : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IEndDragHandler, IDragHandler
 {
@@ -12,13 +13,21 @@ public class DiscUI : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IEn
 
     [field: SerializeField] public int DiscIndex { get; private set; }
     [field: SerializeField] public Vector2 PreviousPosition { get; private set; }
+    [field: SerializeField] public DiscSlotUI PreviousDiscSlot { get; private set; }
 
     [SerializeField] private RectTransform rectTransform;
+    [SerializeField] private AudioClip onPickUpClip;
+    [SerializeField] private AudioClip onFailDropClip;
 
-    public void OnBeginDrag(PointerEventData eventData)
+    public async void OnBeginDrag(PointerEventData eventData)
     {
+        PreviousDiscSlot.RemoveDisc(this);
+        await Task.Yield();
+        PreviousDiscSlot.UpdateInteractableDisc();
+
         canvasGroup.alpha = 0.65f;
         canvasGroup.blocksRaycasts = false;
+        AudioHandler.Instance.PlayAudio(onPickUpClip);
     }
 
     public void OnDrag(PointerEventData eventData)
@@ -33,6 +42,7 @@ public class DiscUI : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IEn
 
         if (!eventData.pointerEnter)
         {
+            AudioHandler.Instance.PlayAudio(onFailDropClip);
             ReturnToPreviousPosition();
             return;
         }
@@ -40,6 +50,7 @@ public class DiscUI : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IEn
         if (!eventData.pointerEnter.TryGetComponent(out DiscSlotUI slot))
         {
             ReturnToPreviousPosition();
+            AudioHandler.Instance.PlayAudio(onFailDropClip);
         }
     }
 
@@ -47,20 +58,15 @@ public class DiscUI : MonoBehaviour, IPointerDownHandler, IBeginDragHandler, IEn
     {
     }
 
-    public void SetAnchoredPosition(Vector2 newPos)
+    public void UpdateData(DiscSlotUI slot, Vector2 newPos)
     {
         rectTransform.anchoredPosition = newPos;
-        SetPreviousPosition(newPos);
-    }
-
-    public void SetPreviousPosition(Vector2 previousPos)
-    {
-        PreviousPosition = previousPos;
+        PreviousDiscSlot = slot;
     }
 
     public void ReturnToPreviousPosition()
     {
-        rectTransform.anchoredPosition = PreviousPosition;
+        PreviousDiscSlot.ReturnDiscToSlot(this);
     }
 
     public Vector2 GetAnchoredPosition()
