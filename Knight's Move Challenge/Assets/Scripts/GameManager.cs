@@ -11,8 +11,15 @@ public class GameManager : MonoBehaviour
     [SerializeField] private Transform backgroundImage;
     private Transform cameraT;
     private HorseMovement horseMovement;
-    public bool gameFinished { get; private set; }
     private int moveCount = 0;
+
+    [field: SerializeField] public bool GameFinished { get; private set; }
+    public bool IsStrictModeOn { get; private set; }
+    [Space]
+    [SerializeField] private AudioClip horseMoveClip;
+    [SerializeField] private AudioClip gameStartedClip;
+    [SerializeField] private AudioClip uiClickClip;
+    [SerializeField] private AudioClip gameFinishedClip;
 
     private void Awake()
     {
@@ -29,6 +36,8 @@ public class GameManager : MonoBehaviour
         AdjustCameraAndBackgroundImagePosition();
 
         InitializeHorse();
+
+        AudioHandler.Instance.PlaySfx(gameStartedClip);
     }
 
     private void AdjustCameraAndBackgroundImagePosition()
@@ -41,27 +50,30 @@ public class GameManager : MonoBehaviour
 
     private void InitializeHorse()
     {
-        Vector2 newPos = gridManager.GetRandomCornerTilePosition();
+        Tile cornerTile = gridManager.GetRandomCornerTile();
+        gridManager.UpdateHorseNextValidPositions(cornerTile.GetTilePosition());
+
         horseMovement = Instantiate(horsePrefab,
-                                    newPos, Quaternion.identity);
+                                    cornerTile.GetTilePosition(), Quaternion.identity);
+        cornerTile.SetTileDone();
 
-        Tile tile = gridManager.GetTileAtPosition(newPos);
+        horseMovement.UpdateIndex(cornerTile.index);
 
-        horseMovement.UpdateIndex(tile.index);
-        tile.SetTileDone();
-        gridManager.UpdateHorseNextValidPositions(tile.index);
+        if (IsStrictModeOn) return;
+        gridManager.ShowVisualHelperForNextValidPosition();
     }
 
     private void ResetHorseDetails()
     {
-        Vector2 newPos = gridManager.GetRandomCornerTilePosition();
-        horseMovement.transform.position = newPos;
+        Tile cornerTile = gridManager.GetRandomCornerTile();
+        gridManager.UpdateHorseNextValidPositions(cornerTile.GetTilePosition());
+        horseMovement.transform.position = cornerTile.GetTilePosition();
+        cornerTile.SetTileDone();
 
-        Tile tile = gridManager.GetTileAtPosition(newPos);
+        horseMovement.UpdateIndex(cornerTile.index);
 
-        horseMovement.UpdateIndex(tile.index);
-        tile.SetTileDone();
-        gridManager.UpdateHorseNextValidPositions(tile.index);
+        if (IsStrictModeOn) return;
+        gridManager.ShowVisualHelperForNextValidPosition();
     }
 
     private void OnDestroy()
@@ -71,25 +83,67 @@ public class GameManager : MonoBehaviour
 
     private void GridManager_OnGameFinsihed()
     {
-        gameFinished = true;
+        AudioHandler.Instance.PlaySfx(gameFinishedClip);
+        GameFinished = true;
+        gridManager.HideVisualHelpers();
+        uiHandler.ShowGameOverScreen(true);
     }
 
     public void MoveHorse(Vector2 newPos, int index)
     {
+        AudioHandler.Instance.PlaySfx(horseMoveClip);
         moveCount++;
         horseMovement.transform.position = newPos;
+        gridManager.UpdateHorseNextValidPositions(newPos);
         horseMovement.UpdateIndex(index);
-        gridManager.UpdateHorseNextValidPositions(index);
         uiHandler.UpdateMovesText(moveCount);
+        
+        if (IsStrictModeOn) return;
+        gridManager.HideVisualHelpers();
+        gridManager.ShowVisualHelperForNextValidPosition();
     }
 
     public void RestartGame()
     {
+        AudioHandler.Instance.PlaySfx(uiClickClip);
+        GameFinished = false;
         moveCount = 0;
+
         uiHandler.UpdateMovesText(moveCount);
-        gameFinished = false;
+        uiHandler.HideGameOverScreen();
+
         gridManager.ResetTiles();
 
         ResetHorseDetails();
+        
+    }
+
+    public void SetStrictMode(bool enabled)
+    {
+        AudioHandler.Instance.PlaySfx(uiClickClip);
+        IsStrictModeOn = enabled;
+
+        RestartForStrictMode();
+    }
+
+    public void RestartForStrictMode()
+    {
+        GameFinished = false;
+        moveCount = 0;
+
+        uiHandler.UpdateMovesText(moveCount);
+        uiHandler.HideGameOverScreen();
+
+        gridManager.ResetTiles();
+
+        ResetHorseDetails();
+    }
+
+    public void GameOver()
+    {
+        AudioHandler.Instance.PlaySfx(gameFinishedClip);
+        GameFinished = true;
+        gridManager.HideVisualHelpers();
+        uiHandler.ShowGameOverScreen(false);
     }
 }

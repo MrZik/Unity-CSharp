@@ -13,9 +13,11 @@ public class Tile : MonoBehaviour
     [SerializeField] private GameObject helperImg;
     public bool isDone;
     public int index;
+    private bool offSet;
 
     public void Init(bool isOffset,int ind)
     {
+        offSet = isOffset;
         backgroundRenderer.color = isOffset ? baseColor : offsetColor;
         index = ind;
     }
@@ -27,14 +29,21 @@ public class Tile : MonoBehaviour
 
     private void OnMouseDown()
     {
-        if (GameManager.Instance.gameFinished) return;
+        if (GameManager.Instance.GameFinished) return;
 
-        bool isValidPos = GridManager.Instance.HandleTileClicked(transform.position);
+        bool isValidPos = GridManager.Instance.IsTileValidPosition(index, GetTilePosition());
 
         if (isValidPos)
         {
+            GameManager.Instance.MoveHorse(GetTilePosition(), index);
+
+            // if this tile is already done but we still went to it = game over
+            if (GameManager.Instance.IsStrictModeOn && isDone)
+            {
+                GameManager.Instance.GameOver();
+            }
+
             SetTileDone();
-            GameManager.Instance.MoveHorse(transform.position,index);
             GridManager.Instance.CheckIfGameFinished();
         }
     }
@@ -55,6 +64,23 @@ public class Tile : MonoBehaviour
     public void ResetTile()
     {
         isDone = false;
-        backgroundRenderer.color = baseColor;
+
+        backgroundRenderer.color = offSet ? baseColor : offsetColor;
+        HideTileHelper();
+    }
+
+    public Vector2 GetTilePosition()
+    {
+        return new Vector2(transform.position.x,transform.position.y);
+    }
+
+    public void ShowTileHelper()
+    {
+        helperImg.SetActive(true);
+    }
+
+    public void HideTileHelper()
+    {
+        helperImg.SetActive(false);
     }
 }

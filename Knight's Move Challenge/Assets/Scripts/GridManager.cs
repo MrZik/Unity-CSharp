@@ -14,31 +14,25 @@ public class GridManager : MonoBehaviour
     [SerializeField] private int height;
     [Space]
     [SerializeField] private Tile tilePrefab;
-    private Dictionary<Vector2, Tile> tiles;
-    private Vector2[] cornerArr = new Vector2[]
-                                { new Vector2(0, 0), new Vector2(0, 7), new Vector2(7, 0), new Vector2(7, 7) };
+    [SerializeField] private Tile[] tilesArr;
+    private List<Tile> activeHelperTiles = new();
 
-    [SerializeField] private int[] tileIndex;
-    [SerializeField] private int[] validIndexes;
-    private int finishedTilesCount = 0;
+    // 0, 7, 56, 63
+    private readonly int[] cornerIndexes = new int[4] { 0, 7, 56, 63 };
+
+    [SerializeField] private Vector2[] validPositions;
+    [SerializeField] private int finishedTilesCount = 0;
+    private Dictionary<Vector2, Tile> tileDictionar = new Dictionary<Vector2, Tile>();
     
     private void Awake()
     {
         Instance = this;
-        tileIndex = new int[width * height];
-        validIndexes = new int[8];
-    }
-
-    private void Start()
-    {
-        for (int i = 0; i < width * height; i++) {
-            tileIndex[i] = i;
-        }
+        tilesArr = new Tile[width * height];
+        validPositions = new Vector2[8];
     }
 
     internal void InstantiateGrid()
     {
-        tiles = new Dictionary<Vector2, Tile>();
         int counter = 0;
 
         for (int i = 0; i < width; i++)
@@ -51,7 +45,8 @@ public class GridManager : MonoBehaviour
                 var isOffset = (i % 2 == 0 && j % 2 != 0) || (i % 2 != 0 && j % 2 == 0);
 
                 spawnedTile.Init(isOffset, counter);
-                tiles[new Vector2(i,j)] = spawnedTile;
+                tileDictionar.Add(new Vector2(i,j),spawnedTile);
+                tilesArr[counter] = spawnedTile;
                 counter++;
             }
         }
@@ -59,9 +54,9 @@ public class GridManager : MonoBehaviour
 
     public void ResetTiles()
     {
-        foreach (Tile tile in tiles.Values)
+        for (int i = 0; i < tilesArr.Length; i++)
         {
-            tile.ResetTile();
+            tilesArr[i].ResetTile();
         }
     }
 
@@ -70,35 +65,23 @@ public class GridManager : MonoBehaviour
         return new Vector3((float)width / 2 - 0.5f, (float)height / 2 - 0.5f, -10);
     }
 
-    public Tile GetTileAtPosition(Vector2 position)
+    public Tile GetTileAtIndex(int index)
     {
-        if (tiles.TryGetValue(position, out Tile tile)) return tile;
+        if (tilesArr.Contains(tilesArr[index])) return tilesArr[index];
         return null;
     }
 
-    public Vector3 GetRandomCornerTilePosition()
+    public Tile GetRandomCornerTile()
     {
-        return cornerArr[UnityEngine.Random.Range(0,cornerArr.Length)];
+        int index = cornerIndexes[UnityEngine.Random.Range(0, cornerIndexes.Length)];
+        return tilesArr[index];
     }
 
-    /// <summary>
-    /// Index 0=0,0 Index 1=0,7 Index 2=7,0 Index 3=7,7
-    /// </summary>
-    /// <param name="corner"></param>
-    /// <returns></returns>
-    //public Vector3 GetCornerTilePositionAtIndex(int corner)
-    //{
-    //    if (corner > cornerArr.Length) return Vector2.zero;
-    //    return cornerArr[corner];
-    //}
-
-    public bool HandleTileClicked(Vector2 pos)
+    public bool IsTileValidPosition(int index,Vector2 pos)
     {
-        if (GetTileAtPosition(pos) == null) return false;
+        if (GetTileAtIndex(index) == null) return false;
 
-        int newIndex = GetTileAtPosition(pos).index;
-
-        if (validIndexes.Contains(newIndex))
+        if (validPositions.Contains(pos))
         {
             return true;
         }
@@ -108,7 +91,7 @@ public class GridManager : MonoBehaviour
 
     public void CheckIfGameFinished()
     {
-        if (finishedTilesCount == tileIndex.Length)
+        if (finishedTilesCount == tilesArr.Length)
         {
             OnGameFinsihed?.Invoke();
         }
@@ -119,25 +102,86 @@ public class GridManager : MonoBehaviour
         finishedTilesCount++;
     }
 
-    public void UpdateHorseNextValidPositions(int currentIndex)
+    public void UpdateHorseNextValidPositions(Vector2 pos)
     {
-        validIndexes[0] = currentIndex + 6;
-        validIndexes[1] = currentIndex + 10;
-        validIndexes[2] = currentIndex + 15;
-        validIndexes[3] = currentIndex + 17;
-        validIndexes[4] = currentIndex - 6;
-        validIndexes[5] = currentIndex - 10;
-        validIndexes[6] = currentIndex - 15;
-        validIndexes[7] = currentIndex - 17;
+        // Clock wise
+        // Top right
+        validPositions[0] = new Vector2(pos.x + 1, pos.y + 2);
+        validPositions[1] = new Vector2(pos.x + 2, pos.y + 1);
+
+        // bottom right
+        validPositions[2] = new Vector2(pos.x + 1, pos.y - 2);
+        validPositions[3] = new Vector2(pos.x + 2, pos.y - 1);
+
+        // bottom left
+        validPositions[4] = new Vector2(pos.x - 1, pos.y - 2);
+        validPositions[5] = new Vector2(pos.x - 2, pos.y - 1);
+
+        // top left
+        validPositions[6] = new Vector2(pos.x - 1, pos.y + 2);
+        validPositions[7] = new Vector2(pos.x - 2, pos.y + 1);
+
+        /* This uses + and - 
+        // top right
+        //validIndexes[1] = currentIndex + 10;
+        //validIndexes[3] = currentIndex + 17;
+
+        // bottom right
+        //validIndexes[0] = currentIndex + 6;
+        //validIndexes[2] = currentIndex + 15;
+
+        // top left
+        //validIndexes[4] = currentIndex - 6;
+        //validIndexes[6] = currentIndex - 15;
+
+        // bottom left
+        //validIndexes[5] = currentIndex - 10;
+        //validIndexes[7] = currentIndex - 17;
+        */
+
+        if (GameManager.Instance.IsStrictModeOn)
+        {
+            int count = 0;
+
+            for (int i = 0; i < validPositions.Length; i++)
+            {
+                if (tileDictionar.TryGetValue(validPositions[i], out Tile tile))
+                {
+                    if(tile.isDone)
+                    {
+                        count++;
+                    }
+                }
+                else
+                {
+                    count++;
+                }
+            }
+
+            if(count == validPositions.Length)
+            {
+                GameManager.Instance.GameOver();
+            }
+        }
     }
 
     public void ShowVisualHelperForNextValidPosition()
     {
-
+        for (int i = 0; i < validPositions.Length; i++)
+        {
+            if(tileDictionar.TryGetValue(validPositions[i],out Tile tile))
+            {
+                tile.ShowTileHelper();
+                activeHelperTiles.Add(tile);
+            }
+        }
     }
 
     public void HideVisualHelpers()
     {
-
+        for (int i = 0; i < activeHelperTiles.Count; i++)
+        {
+            activeHelperTiles[i].HideTileHelper();
+        }
     }
 }
