@@ -44,7 +44,7 @@ public class Tile : MonoBehaviour
             }
 
             SetTileDone();
-            GridManager.Instance.CheckIfGameFinished();
+            //GridManager.Instance.CheckIfGameFinished();
         }
     }
 

@@ -60,6 +60,11 @@ public class GridManager : MonoBehaviour
         }
     }
 
+    public void ResetFinishedTileCount()
+    {
+        finishedTilesCount = 0;
+    }
+
     public Vector3 GetWholeGridPosition()
     {
         return new Vector3((float)width / 2 - 0.5f, (float)height / 2 - 0.5f, -10);
@@ -89,17 +94,14 @@ public class GridManager : MonoBehaviour
         return false;
     }
 
-    public void CheckIfGameFinished()
+    public void UpateFinishedTilesCount()
     {
+        finishedTilesCount++;
+
         if (finishedTilesCount == tilesArr.Length)
         {
             OnGameFinsihed?.Invoke();
         }
-    }
-
-    public void UpateFinishedTilesCount()
-    {
-        finishedTilesCount++;
     }
 
     public void UpdateHorseNextValidPositions(Vector2 pos)

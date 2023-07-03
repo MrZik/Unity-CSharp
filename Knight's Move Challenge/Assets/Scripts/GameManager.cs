@@ -113,6 +113,7 @@ public class GameManager : MonoBehaviour
         uiHandler.HideGameOverScreen();
 
         gridManager.ResetTiles();
+        gridManager.ResetFinishedTileCount();
 
         ResetHorseDetails();
         
@@ -123,11 +124,12 @@ public class GameManager : MonoBehaviour
         AudioHandler.Instance.PlaySfx(uiClickClip);
         IsStrictModeOn = enabled;
 
-        RestartForStrictMode();
+        RestartGame();
     }
 
     public void RestartForStrictMode()
     {
+        AudioHandler.Instance.PlaySfx(uiClickClip);
         GameFinished = false;
         moveCount = 0;
 
